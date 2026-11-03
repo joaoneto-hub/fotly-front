@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { brl, watchOrder } from '../lib/checkout.js'
 import PublicLayout from '../app/PublicLayout.jsx'
-import { Alert, FullPageSpinner, Page, Spinner, errorMessage } from '../app/ui.jsx'
+import { useToast } from '../app/toast.jsx'
+import { Alert, FullPageSpinner, Page, Spinner, copyText } from '../app/ui.jsx'
 import { Icon, ease } from '../components/shared.jsx'
 
 const MESSAGES = {
@@ -39,6 +40,17 @@ export default function Order() {
     })
   }, [orderId, token])
 
+  // Avisa só quando o Pix é pago com a página aberta, não ao reabrir um pedido já pago
+  const toast = useToast()
+  const lastStatus = useRef(null)
+  useEffect(() => {
+    if (!order) return
+    if (lastStatus.current === 'pending' && order.status === 'paid') {
+      toast.success('Pagamento confirmado', { description: 'Seus arquivos estão liberados.' })
+    }
+    lastStatus.current = order.status
+  }, [order, toast])
+
   // watchOrder registra erros no console; se nada chegar em 10s, avisa
   useEffect(() => {
     if (order || error) return
@@ -73,17 +85,13 @@ export default function Order() {
 }
 
 function Pending({ order, pix }) {
+  const toast = useToast()
   const [copied, setCopied] = useState(false)
-  const [error, setError] = useState('')
 
   async function copy() {
-    try {
-      await navigator.clipboard.writeText(pix.qrCode)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch (e) {
-      setError(errorMessage(e))
-    }
+    await copyText(pix.qrCode, toast, 'Código Pix copiado')
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   return (
@@ -102,7 +110,6 @@ function Pending({ order, pix }) {
               </button>
             </div>
           )}
-          <Alert>{error}</Alert>
         </>
       ) : (
         <p className="muted">Abra o app do seu banco e pague o Pix gerado para este pedido.</p>

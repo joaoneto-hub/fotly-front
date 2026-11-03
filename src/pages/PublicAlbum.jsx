@@ -4,8 +4,11 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { albumMedia, getAlbum } from '../lib/albums.js'
 import { photographerBySlug } from '../lib/profiles.js'
 import { brl, startCheckout } from '../lib/checkout.js'
+import { normalizePage } from '../lib/page.js'
 import PublicLayout from '../app/PublicLayout.jsx'
 import PreviewImage from '../app/PreviewImage.jsx'
+import { Avatar } from '../app/public-parts.jsx'
+import { useToast } from '../app/toast.jsx'
 import { Alert, FullPageSpinner, Modal, Page, Spinner, errorMessage } from '../app/ui.jsx'
 import { Icon, ease } from '../components/shared.jsx'
 import NotFound from './NotFound.jsx'
@@ -41,11 +44,15 @@ export default function PublicAlbum() {
     [selected, state.media]
   )
 
+  useEffect(() => {
+    if (state.album) document.title = `${state.album.title} · ${state.photographer.displayName}`
+  }, [state.album, state.photographer])
+
   if (state.loading) return <FullPageSpinner />
   if (state.notFound) return <NotFound />
 
   const { photographer, album, media } = state
-  document.title = `${album.title} · ${photographer.displayName}`
+  const page = normalizePage(photographer.page)
 
   function toggle(id) {
     setSelected((s) => {
@@ -58,10 +65,12 @@ export default function PublicAlbum() {
   const allSelected = media.length > 0 && selected.size === media.length
 
   return (
-    <PublicLayout>
+    <PublicLayout page={photographer.page}>
       <Page className="container public-album">
         <Link to={`/${slug}`} className="back-link">
-          <span aria-hidden="true">←</span> {photographer.displayName}
+          <span aria-hidden="true">←</span>
+          <Avatar photographer={photographer} page={photographer.page} size={28} />
+          {photographer.displayName}
         </Link>
         <header className="public-album__head">
           <div>
@@ -80,6 +89,8 @@ export default function PublicAlbum() {
             </button>
           )}
         </header>
+
+        {page.albumNote && <p className="album-note">{page.albumNote}</p>}
 
         <div className="media-grid media-grid--public">
           {media.map((m, i) => {
@@ -139,7 +150,7 @@ export default function PublicAlbum() {
                 · {brl(total)}
               </p>
               <button type="button" className="btn btn--accent" onClick={() => setCheckoutOpen(true)}>
-                Comprar com Pix
+                {page.buyLabel}
               </button>
             </div>
           </motion.div>
@@ -159,6 +170,7 @@ export default function PublicAlbum() {
 
 function CheckoutModal({ open, onClose, albumId, mediaIds, total }) {
   const navigate = useNavigate()
+  const toast = useToast()
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -175,9 +187,12 @@ function CheckoutModal({ open, onClose, albumId, mediaIds, total }) {
       } catch {
         /* armazenamento indisponível: a página do pedido mostra só o status */
       }
+      toast.success('Pix gerado', { description: 'Pague pelo app do seu banco.' })
       navigate(`/pedido/${orderId}?t=${encodeURIComponent(token)}`)
     } catch (err) {
-      setError(errorMessage(err))
+      // Erro de validação (e-mail, item) fica no formulário; falha do servidor vira aviso
+      if (err?.code?.includes('invalid-argument')) setError(errorMessage(err))
+      else toast.error('Não foi possível gerar o Pix', { description: errorMessage(err) })
       setBusy(false)
     }
   }

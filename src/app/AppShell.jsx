@@ -10,26 +10,21 @@ import './dashboard.css'
 /**
  * Layout do painel: barra lateral + topo.
  * title / actions aparecem no topo; crumbs é uma lista [{ label, to? }].
+ * bare esconde o menu (primeiro acesso, antes de existir perfil).
  */
-export default function AppShell({ children, title, crumbs, actions }) {
+export default function AppShell({ children, title, crumbs, actions, bare = false }) {
   const [drawer, setDrawer] = useState(false)
-  const location = useLocation()
+  const { pathname } = useLocation()
 
   useEffect(() => {
     setDrawer(false)
-    if (!location.hash) {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-      return
-    }
-    // Espera a seção renderizar (os dados podem estar chegando)
-    const t = setTimeout(() => document.getElementById(location.hash.slice(1))?.scrollIntoView({ behavior: 'smooth' }), 60)
-    return () => clearTimeout(t)
-  }, [location.pathname, location.hash])
+    window.scrollTo({ top: 0 })
+  }, [pathname])
 
   return (
     <div className="app-layout">
       <aside className="app-sidebar" aria-label="Menu principal">
-        <SidebarContent />
+        <SidebarContent bare={bare} />
       </aside>
 
       <AnimatePresence>
@@ -50,7 +45,7 @@ export default function AppShell({ children, title, crumbs, actions }) {
               transition={{ type: 'spring', stiffness: 380, damping: 38 }}
               aria-label="Menu principal"
             >
-              <SidebarContent />
+              <SidebarContent bare={bare} />
             </motion.aside>
           </>
         )}
@@ -85,16 +80,17 @@ export default function AppShell({ children, title, crumbs, actions }) {
   )
 }
 
-function SidebarContent() {
-  const { profile } = useAuth()
-  const { pathname, hash } = useLocation()
-  const inAlbum = pathname.startsWith('/painel/album')
+const MENU = [
+  { to: '/painel', label: 'Visão geral', icon: 'grid', match: (p) => p === '/painel' },
+  { to: '/painel/albuns', label: 'Álbuns', icon: 'albums', match: (p) => p.startsWith('/painel/albuns') || p.startsWith('/painel/album/') },
+  { to: '/painel/vendas', label: 'Vendas', icon: 'receipt', match: (p) => p.startsWith('/painel/vendas') },
+  { to: '/painel/pagina', label: 'Minha página', icon: 'palette', match: (p) => p.startsWith('/painel/pagina') },
+  { to: '/painel/configuracoes', label: 'Configurações', icon: 'settings', match: (p) => p.startsWith('/painel/configuracoes') },
+]
 
-  const items = [
-    { to: '/painel', label: 'Visão geral', icon: 'grid', active: pathname === '/painel' && !hash },
-    { to: '/painel#albuns', label: 'Álbuns', icon: 'albums', active: inAlbum || hash === '#albuns' },
-    { to: '/painel#vendas', label: 'Vendas', icon: 'receipt', active: hash === '#vendas' },
-  ]
+function SidebarContent({ bare }) {
+  const { profile } = useAuth()
+  const { pathname } = useLocation()
 
   return (
     <>
@@ -102,32 +98,37 @@ function SidebarContent() {
         <BrandLink to="/painel" />
       </div>
 
-      <nav className="app-nav">
-        <p className="app-nav__label">Menu</p>
-        {items.map((i) => (
-          <Link key={i.label} to={i.to} className={`app-nav__item ${i.active ? 'is-active' : ''}`} aria-current={i.active ? 'page' : undefined}>
-            <Icon name={i.icon} size={18} />
-            {i.label}
-          </Link>
-        ))}
-        {profile?.slug && (
-          <a href={`/${profile.slug}`} target="_blank" rel="noreferrer" className="app-nav__item">
-            <Icon name="globe" size={18} />
-            Minha página
-            <Icon name="external" size={14} className="app-nav__ext" />
-          </a>
-        )}
-      </nav>
+      {!bare && (
+        <nav className="app-nav">
+          <p className="app-nav__label">Menu</p>
+          {MENU.map((i) => {
+            const active = i.match(pathname)
+            return (
+              <Link key={i.to} to={i.to} className={`app-nav__item ${active ? 'is-active' : ''}`} aria-current={active ? 'page' : undefined}>
+                <Icon name={i.icon} size={18} />
+                {i.label}
+              </Link>
+            )
+          })}
+          {profile?.slug && (
+            <a href={`/${profile.slug}`} target="_blank" rel="noreferrer" className="app-nav__item">
+              <Icon name="globe" size={18} />
+              Abrir minha página
+              <Icon name="external" size={14} className="app-nav__ext" />
+            </a>
+          )}
+        </nav>
+      )}
 
       {profile && (
         <div className="app-sidebar__foot">
-          <div className={`drive-pill ${profile.driveConnected ? 'is-ok' : ''}`}>
+          <Link to="/painel/configuracoes" className={`drive-pill ${profile.driveConnected ? 'is-ok' : ''}`}>
             <span className="drive-pill__dot" />
             <div>
               <p className="drive-pill__title">Google Drive</p>
               <p className="drive-pill__sub">{profile.driveConnected ? 'Conectado · Meu Drive › Fotly' : 'Não conectado'}</p>
             </div>
-          </div>
+          </Link>
         </div>
       )}
     </>
@@ -186,6 +187,11 @@ function UserMenu() {
               <a role="menuitem" className="user-menu__item" href={`/${profile.slug}`} target="_blank" rel="noreferrer">
                 <Icon name="external" size={16} /> Ver minha página
               </a>
+            )}
+            {profile && (
+              <Link role="menuitem" className="user-menu__item" to="/painel/configuracoes" onClick={() => setOpen(false)}>
+                <Icon name="settings" size={16} /> Configurações
+              </Link>
             )}
             <button type="button" role="menuitem" className="user-menu__item" onClick={logout}>
               <Icon name="logout" size={16} /> Sair

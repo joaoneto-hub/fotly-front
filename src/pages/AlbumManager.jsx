@@ -6,7 +6,8 @@ import { publishAlbum, updateAlbum, uploadMedia, watchAlbum, watchMedia } from '
 import { brl } from '../lib/checkout.js'
 import { myOrders, salesByAlbum } from '../lib/stats.js'
 import AppShell from '../app/AppShell.jsx'
-import { Alert, FullPageSpinner, MODE_LABEL, MoneyInput, Page, Spinner, errorMessage } from '../app/ui.jsx'
+import { useToast } from '../app/toast.jsx'
+import { Alert, FullPageSpinner, MODE_LABEL, MoneyInput, Page, Spinner, copyText, errorMessage } from '../app/ui.jsx'
 import PreviewImage from '../app/PreviewImage.jsx'
 import { Icon, ease } from '../components/shared.jsx'
 
@@ -31,13 +32,13 @@ export default function AlbumManager() {
   if (album === undefined) return <FullPageSpinner />
   if (!album || album.ownerId !== user.uid) {
     return (
-      <AppShell crumbs={[{ label: 'Álbuns', to: '/painel#albuns' }, { label: 'Não encontrado' }]}>
+      <AppShell crumbs={[{ label: 'Álbuns', to: '/painel/albuns' }, { label: 'Não encontrado' }]}>
         <Page>
           <div className="empty">
             <p className="empty__title">Álbum não encontrado</p>
             <Alert>{error}</Alert>
-            <Link to="/painel" className="btn btn--ghost btn--sm">
-              Voltar ao painel
+            <Link to="/painel/albuns" className="btn btn--ghost btn--sm">
+              Voltar aos álbuns
             </Link>
           </div>
         </Page>
@@ -49,7 +50,7 @@ export default function AlbumManager() {
   const bytes = media.reduce((s, m) => s + (m.size ?? 0), 0)
 
   return (
-    <AppShell crumbs={[{ label: 'Álbuns', to: '/painel#albuns' }, { label: album.title }]}>
+    <AppShell crumbs={[{ label: 'Álbuns', to: '/painel/albuns' }, { label: album.title }]}>
       <Page>
         <AlbumHeader album={album} slug={profile?.slug} count={media.length} />
         <Alert>{error}</Alert>
@@ -88,21 +89,21 @@ function formatBytes(n) {
 }
 
 function AlbumHeader({ album, slug, count }) {
+  const toast = useToast()
   const [busy, setBusy] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const [error, setError] = useState('')
   const published = album.status === 'published'
   const shareable = published && album.mode !== 'private'
   const publicPath = `/${slug}/${album.id}`
 
   async function togglePublish() {
-    if (!published && count === 0) return setError('Suba pelo menos um arquivo antes de publicar.')
+    if (!published && count === 0) return toast.info('Suba pelo menos um arquivo antes de publicar.')
     setBusy(true)
-    setError('')
     try {
       await publishAlbum(album.id, !published)
+      if (published) toast.info('Álbum despublicado', { description: 'Ele saiu da sua página pública.' })
+      else toast.success('Álbum publicado', { description: album.mode === 'private' ? 'Fica oculto até as galerias com senha chegarem.' : 'Copie o link e mande para os clientes.' })
     } catch (e) {
-      setError(errorMessage(e))
+      toast.error('Não foi possível mudar a publicação', { description: errorMessage(e) })
     } finally {
       setBusy(false)
     }
@@ -112,16 +113,13 @@ function AlbumHeader({ album, slug, count }) {
     if (cents === album.defaultPrice) return
     try {
       await updateAlbum(album.id, { defaultPrice: cents })
+      toast.success('Preço atualizado', { description: `Novos envios custam ${brl(cents)}.` })
     } catch (e) {
-      setError(errorMessage(e))
+      toast.error('Não foi possível salvar o preço', { description: errorMessage(e) })
     }
   }
 
-  async function copyLink() {
-    await navigator.clipboard.writeText(window.location.origin + publicPath)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1800)
-  }
+  const copyLink = () => copyText(window.location.origin + publicPath, toast)
 
   return (
     <div className="app-card app-card--pad album-hero">
@@ -135,7 +133,7 @@ function AlbumHeader({ album, slug, count }) {
           <div className="url-box url-box--inline">
             <span className="url-box__text">fotly.com.br{publicPath}</span>
             <button type="button" className="icon-btn icon-btn--sm" onClick={copyLink} aria-label="Copiar link">
-              <Icon name={copied ? 'check' : 'copy'} size={16} />
+              <Icon name="copy" size={16} />
             </button>
             <Link to={publicPath} target="_blank" rel="noreferrer" className="icon-btn icon-btn--sm" aria-label="Abrir página">
               <Icon name="external" size={16} />
@@ -159,7 +157,6 @@ function AlbumHeader({ album, slug, count }) {
           {busy && <Spinner size={16} />} {published ? 'Despublicar' : 'Publicar álbum'}
         </button>
       </div>
-      <Alert>{error}</Alert>
       <p className="hint album-hero__note">Novos envios usam o preço atual. Itens já enviados mantêm o preço da hora do envio.</p>
     </div>
   )
@@ -167,6 +164,7 @@ function AlbumHeader({ album, slug, count }) {
 
 /* ---------- Upload com fila ---------- */
 function Uploader({ album }) {
+  const toast = useToast()
   const [queue, setQueue] = useState([])
   const [dragging, setDragging] = useState(false)
   const running = useRef(false)
@@ -175,9 +173,12 @@ function Uploader({ album }) {
   const patch = useCallback((id, data) => setQueue((q) => q.map((i) => (i.id === id ? { ...i, ...data } : i))), [])
 
   function addFiles(list) {
-    const items = [...list]
+    const all = [...list]
+    const items = all
       .filter((f) => f.type.startsWith('image/') || f.type.startsWith('video/'))
       .map((file) => ({ id: crypto.randomUUID(), file, progress: 0, status: 'waiting' }))
+    const skipped = all.length - items.length
+    if (skipped) toast.info(`${skipped} ${skipped === 1 ? 'arquivo ignorado' : 'arquivos ignorados'}`, { description: 'Só fotos e vídeos podem ser enviados.' })
     setQueue((q) => [...q, ...items])
   }
 
@@ -198,6 +199,24 @@ function Uploader({ album }) {
   }, [queue, album, patch])
 
   const busy = queue.some((i) => i.status === 'uploading' || i.status === 'waiting')
+
+  // Resumo quando a fila termina
+  const wasBusy = useRef(false)
+  const reported = useRef(new Set())
+  useEffect(() => {
+    if (busy) {
+      wasBusy.current = true
+      return
+    }
+    if (!wasBusy.current) return
+    wasBusy.current = false
+    const batch = queue.filter((i) => !reported.current.has(i.id))
+    batch.forEach((i) => reported.current.add(i.id))
+    const ok = batch.filter((i) => i.status === 'done').length
+    const failed = batch.filter((i) => i.status === 'error').length
+    if (failed) toast.error(`${failed} ${failed === 1 ? 'arquivo não foi enviado' : 'arquivos não foram enviados'}`, { description: 'Veja o motivo na lista e tente de novo.' })
+    if (ok) toast.success(`${ok} ${ok === 1 ? 'arquivo enviado' : 'arquivos enviados'}`, { description: 'Os originais estão no seu Drive.' })
+  }, [busy, queue, toast])
 
   // Avisa antes de fechar a aba no meio de um envio
   useEffect(() => {

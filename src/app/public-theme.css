@@ -1,0 +1,173 @@
+/* ===== Página pública personalizável =====
+   PublicLayout define as variáveis (--ink, --text, --accent, --on-accent...) a partir de photographers/{uid}.page */
+
+.public {
+  background: var(--ink);
+  color: var(--text);
+}
+.public .btn--accent,
+.public .btn--accent:hover,
+.public .photo__check {
+  color: var(--on-accent, var(--ink));
+}
+.public .input:focus,
+.public .slug-input:focus-within {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.public .cart-bar {
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+}
+.public .album-card {
+  background: var(--surface);
+}
+.public .album-card__cover {
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  color: color-mix(in srgb, var(--text) 40%, transparent);
+  overflow: hidden;
+}
+.public .album-card:nth-child(3n + 2) .album-card__cover {
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+}
+.public .media-grid--public {
+  grid-template-columns: repeat(auto-fill, minmax(min(46%, var(--grid-min, 220px)), 1fr));
+}
+
+/* Tema claro: ajusta o que tinha cor fixa escura */
+.public--light .preview,
+.public--light .media-tile {
+  background: #e9e5dc;
+}
+.public--light .icon-btn:hover {
+  background: rgba(23, 22, 20, 0.06);
+}
+.public--light .input::placeholder {
+  color: #9a958a;
+}
+.public--light .modal-backdrop {
+  background: rgba(23, 22, 20, 0.45);
+}
+.public--light .modal {
+  box-shadow: 0 40px 80px -30px rgba(23, 22, 20, 0.35);
+}
+.public--light .alert--error {
+  color: #b42318;
+}
+
+/* ===== Topo do perfil ===== */
+.storage-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.4s var(--ease);
+}
+.storage-img.is-loaded {
+  opacity: 1;
+}
+
+.public-avatar {
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  color: var(--on-accent, var(--ink));
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+.public-profile {
+  padding-top: 40px;
+}
+.profile-hero {
+  margin-bottom: 40px;
+}
+.profile-hero__cover {
+  height: clamp(160px, 28vw, 320px);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface);
+}
+.profile-hero__body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px;
+}
+.profile-hero.has-cover .profile-hero__body {
+  align-items: flex-end;
+  margin-top: -44px;
+  padding-inline: clamp(12px, 3vw, 28px);
+}
+.profile-hero.has-cover .public-avatar {
+  box-shadow: 0 0 0 5px var(--ink);
+}
+.profile-hero__text {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+.profile-hero__name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(30px, 4vw, 46px);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+.profile-hero__headline {
+  margin: 6px 0 0;
+  font-size: 18px;
+  color: var(--text-soft);
+}
+.profile-hero__bio {
+  margin: 10px 0 0;
+  max-width: 62ch;
+  color: var(--text-muted);
+  white-space: pre-line;
+}
+.profile-hero__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+.chip-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: border-color 0.2s var(--ease), background 0.2s var(--ease);
+}
+a.chip-link:hover {
+  color: var(--text);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.back-link .public-avatar {
+  font-size: 12px !important;
+}
+
+.album-note {
+  margin: 20px 0 0;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border-left: 3px solid var(--accent);
+  background: var(--surface);
+  color: var(--text-soft);
+  font-size: 15px;
+  white-space: pre-line;
+}
+.public-album .media-grid {
+  margin-top: 24px;
+}

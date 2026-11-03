@@ -91,6 +91,47 @@ export function Modal({ open, onClose, title, children, width = 520 }) {
   )
 }
 
+/** Pede confirmação antes de uma ação. onConfirm pode ser assíncrono. */
+export function ConfirmModal({ open, onClose, onConfirm, title, children, confirmLabel = 'Confirmar', danger = false }) {
+  const [busy, setBusy] = useState(false)
+
+  async function confirm() {
+    setBusy(true)
+    try {
+      await onConfirm()
+      onClose()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={busy ? undefined : onClose} title={title} width={440}>
+      <div className="form">
+        <p className="muted confirm__text">{children}</p>
+        <div className="confirm__actions">
+          <button type="button" className="btn btn--ghost btn--sm" onClick={onClose} disabled={busy}>
+            Cancelar
+          </button>
+          <button type="button" className={`btn btn--sm ${danger ? 'btn--danger' : 'btn--accent'}`} onClick={confirm} disabled={busy}>
+            {busy && <Spinner size={14} />} {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+/** Copia um texto e avisa com toast. */
+export async function copyText(text, toast, label = 'Link copiado') {
+  try {
+    await navigator.clipboard.writeText(text)
+    toast.success(label)
+  } catch {
+    toast.error('Não foi possível copiar', { description: 'Selecione o texto e copie manualmente.' })
+  }
+}
+
 export function Alert({ children, tone = 'error' }) {
   if (!children) return null
   return (

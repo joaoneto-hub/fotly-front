@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { photographerBySlug } from '../lib/profiles.js'
 import { publicAlbums } from '../lib/albums.js'
-import { brl } from '../lib/checkout.js'
+import { albumSummaries } from '../lib/stats.js'
 import PublicLayout from '../app/PublicLayout.jsx'
-import { FullPageSpinner, MODE_LABEL, Page } from '../app/ui.jsx'
-import { Icon, staggerChild, staggerParent } from '../components/shared.jsx'
+import { AlbumCard, ProfileHero } from '../app/public-parts.jsx'
+import { FullPageSpinner, Page } from '../app/ui.jsx'
+import { staggerChild, staggerParent } from '../components/shared.jsx'
 import NotFound from './NotFound.jsx'
 
 export default function PublicProfile() {
@@ -20,7 +21,7 @@ export default function PublicProfile() {
       try {
         const photographer = await photographerBySlug(slug)
         if (!photographer) return alive && setState({ loading: false, notFound: true })
-        const albums = await publicAlbums(photographer.id)
+        const albums = await publicAlbums(photographer.id).then(albumSummaries)
         if (alive) setState({ loading: false, photographer, albums })
       } catch (e) {
         console.error(e)
@@ -32,24 +33,19 @@ export default function PublicProfile() {
     }
   }, [slug])
 
+  useEffect(() => {
+    if (state.photographer) document.title = `${state.photographer.displayName} · Fotly`
+  }, [state.photographer])
+
   if (state.loading) return <FullPageSpinner />
   if (state.notFound) return <NotFound />
 
   const { photographer, albums } = state
-  document.title = `${photographer.displayName} · Fotly`
 
   return (
-    <PublicLayout>
+    <PublicLayout page={photographer.page}>
       <Page className="container public-profile">
-        <header className="public-profile__head">
-          <div className="public-profile__avatar" aria-hidden="true">
-            {photographer.displayName.charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <h1 className="h2">{photographer.displayName}</h1>
-            {photographer.bio && <p className="lead">{photographer.bio}</p>}
-          </div>
-        </header>
+        <ProfileHero photographer={photographer} page={photographer.page} />
 
         {albums.length === 0 ? (
           <div className="empty">
@@ -59,18 +55,7 @@ export default function PublicProfile() {
           <motion.div className="album-grid" variants={staggerParent} initial="hidden" animate="show">
             {albums.map((a) => (
               <motion.div key={a.id} variants={staggerChild}>
-                <Link to={`/${slug}/${a.id}`} className="album-card">
-                  <div className="album-card__cover">
-                    <Icon name="image" size={30} />
-                  </div>
-                  <div className="album-card__body">
-                    <p className="album-card__title">{a.title}</p>
-                    <p className="album-card__meta">
-                      <span>{MODE_LABEL[a.mode]}</span>
-                      <span>{brl(a.defaultPrice)} por item</span>
-                    </p>
-                  </div>
-                </Link>
+                <AlbumCard album={a} page={photographer.page} to={`/${slug}/${a.id}`} />
               </motion.div>
             ))}
           </motion.div>

@@ -23,8 +23,12 @@ Para testar com os emuladores, rode `firebase emulators:start` no fotly-backend 
 |---|---|
 | `/` | Landing page |
 | `/entrar` | Login com Google |
-| `/painel` | Criação do perfil (primeiro acesso), conexão do Drive e lista de álbuns |
+| `/painel` | Visão geral: métricas, gráfico, primeiros passos (ou criação do perfil no primeiro acesso) |
+| `/painel/albuns` | Todos os álbuns, com busca e filtro por status |
 | `/painel/album/:id` | Upload com fila e progresso, preço, publicar e copiar link |
+| `/painel/vendas` | Pedidos com busca, filtro e totais |
+| `/painel/pagina` | Personalização da página de venda com prévia ao vivo |
+| `/painel/configuracoes` | Nome, Google Drive e conta |
 | `/:slug` | Página pública do fotógrafo |
 | `/:slug/:albumId` | Álbum público: o cliente seleciona e compra |
 | `/pedido/:id?t=...` | QR do Pix, espera a confirmação e mostra os downloads |
@@ -37,12 +41,20 @@ src/
   AppRoutes.jsx         rotas do app
   context/AuthContext   usuário logado e perfil em tempo real
   lib/                  integração com Firebase, Drive e checkout (mesma pasta web/ do backend)
-  app/                  componentes do app (shell, modal, campos, prévia)
-  pages/                telas
+  app/                  componentes do app (shell, modal, toast, campos, prévia, tema público)
+  pages/                telas públicas e do álbum
+  pages/painel/         uma tela por item do menu do painel
   components/           seções da landing
   index.css             tokens e estilos da landing
   app.css               estilos do app
 ```
+
+## Personalização da página
+
+Fica em `photographers/{uid}.page` no Firestore (ver `src/lib/page.js`): tema claro/escuro, cor de destaque,
+tipografia, tamanho das fotos, chamada, recado nos álbuns, texto do botão, preços visíveis e contatos
+(WhatsApp, Instagram, e-mail). A foto de perfil e a capa vão para o Storage em `branding/{uid}/`.
+As regras do backend validam cada campo, então publique-as junto: `firebase deploy --only firestore:rules,storage`.
 
 ## Fluxo para testar de ponta a ponta
 
@@ -74,6 +86,4 @@ Lembre de adicionar o domínio final nas **Origens JavaScript autorizadas** do c
 
 - Galeria privada com senha (o álbum privado já fica oculto ao público)
 - Editar preço de um item específico, excluir itens, capa do álbum
-- Bio e foto no perfil público
-- Lista de vendas no painel
 - Visualização ampliada das fotos (lightbox)
