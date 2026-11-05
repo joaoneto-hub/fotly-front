@@ -5,7 +5,7 @@ import { updateDisplayName } from '../../lib/profiles.js'
 import AppShell from '../../app/AppShell.jsx'
 import { DriveCard, PageHead } from '../../app/dashboard-parts.jsx'
 import { useToast } from '../../app/toast.jsx'
-import { Page, Spinner, copyText, errorMessage } from '../../app/ui.jsx'
+import { Button, Page, copyText, errorMessage } from '../../app/ui.jsx'
 import { Icon } from '../../components/shared.jsx'
 
 export default function Settings() {
@@ -56,9 +56,9 @@ export default function Settings() {
                 <p className="hint">O endereço não muda depois de criado, para não quebrar links já enviados.</p>
               </div>
               <div>
-                <button type="submit" className="btn btn--accent btn--sm" disabled={busy || name.trim() === profile.displayName}>
-                  {busy && <Spinner size={14} />} Salvar
-                </button>
+                <Button type="submit" variant="accent" size="sm" loading={busy} disabled={name.trim() === profile.displayName}>
+                  Salvar
+                </Button>
               </div>
             </form>
           </section>

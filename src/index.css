@@ -195,6 +195,7 @@ strong {
 }
 .btn--ghost {
   color: var(--text);
+  background: transparent;
   border-color: var(--line-strong);
 }
 .btn--ghost:hover {

@@ -1,7 +1,7 @@
 // Peças reaproveitadas pelas páginas do painel.
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { animate, motion } from 'framer-motion'
 import { connectDrive, disconnectDrive } from '../lib/drive.js'
 import { createAlbum } from '../lib/albums.js'
 import { brl } from '../lib/checkout.js'
@@ -9,7 +9,9 @@ import { ORDER_STATUS, timeAgo } from '../lib/stats.js'
 import { Sparkline } from './charts.jsx'
 import PreviewImage from './PreviewImage.jsx'
 import { useToast } from './toast.jsx'
-import { Alert, ConfirmModal, MODE_LABEL, Modal, MoneyInput, Spinner, copyText, errorMessage } from './ui.jsx'
+import { Alert, Button, ConfirmModal, EmptyState, MODE_LABEL, Modal, MoneyInput, Skeleton, copyText, errorMessage } from './ui.jsx'
+
+export { Skeleton }
 import { Icon, ease, staggerChild } from '../components/shared.jsx'
 
 export function Segmented({ value, onChange, options, label, id = 'seg' }) {
@@ -21,6 +23,7 @@ export function Segmented({ value, onChange, options, label, id = 'seg' }) {
           type="button"
           role="radio"
           aria-checked={value === o.value}
+          aria-label={o.aria}
           className={`seg__btn ${value === o.value ? 'is-active' : ''}`}
           onClick={() => onChange(o.value)}
         >
@@ -32,7 +35,24 @@ export function Segmented({ value, onChange, options, label, id = 'seg' }) {
   )
 }
 
-export function Kpi({ label, icon, value, delta, deltaKind = 'pct', spark, hint }) {
+/** Número que anima do valor anterior até o novo (contagem ao carregar e ao trocar o período). */
+export function AnimatedNumber({ value, format = (v) => Math.round(v).toLocaleString('pt-BR') }) {
+  const [shown, setShown] = useState(value)
+  const from = useRef(0)
+  useEffect(() => {
+    const controls = animate(from.current, value, {
+      duration: 0.9,
+      ease,
+      onUpdate: (v) => setShown(v),
+    })
+    from.current = value
+    return () => controls.stop()
+  }, [value])
+  return <>{format(shown)}</>
+}
+
+/** Cartão de métrica. value numérico (null = carregando) + format para exibir. */
+export function Kpi({ label, icon, value, format, delta, deltaKind = 'pct', spark, hint, empty }) {
   return (
     <motion.div variants={staggerChild} className="app-card kpi" title={hint}>
       <div className="kpi__top">
@@ -41,7 +61,11 @@ export function Kpi({ label, icon, value, delta, deltaKind = 'pct', spark, hint 
           <Icon name={icon} size={16} />
         </span>
       </div>
-      {value == null ? <Skeleton h={34} w="60%" /> : <p className="kpi__value">{value}</p>}
+      {value === undefined ? (
+        <Skeleton h={34} w="60%" />
+      ) : (
+        <p className="kpi__value">{value === null ? empty ?? '—' : <AnimatedNumber value={value} format={format} />}</p>
+      )}
       <div className="kpi__foot">
         <Delta value={delta} kind={deltaKind} />
         {spark && <Sparkline values={spark} />}
@@ -62,10 +86,6 @@ function Delta({ value, kind }) {
       <span className="delta__vs">vs. período anterior</span>
     </span>
   )
-}
-
-export function Skeleton({ h = 16, w = '100%' }) {
-  return <span className="skeleton" style={{ height: h, width: w }} />
 }
 
 /** Cabeçalho de página do painel: título, texto e ações à direita. */
@@ -144,27 +164,7 @@ function RowsSkeleton({ thumb }) {
 
 export function AlbumList({ albums, byAlbum, driveConnected, onNew, emptyText }) {
   if (!albums) return <RowsSkeleton thumb />
-  if (albums.length === 0) {
-    return (
-      <div className="empty empty--compact">
-        <Icon name="albums" size={30} />
-        <p className="empty__title">{emptyText ?? 'Nenhum álbum ainda'}</p>
-        {!emptyText && (
-          <p className="muted">{driveConnected ? 'Crie seu primeiro álbum e suba as fotos do último trabalho.' : 'Conecte o Google Drive para criar seu primeiro álbum.'}</p>
-        )}
-        {!emptyText && driveConnected && onNew && (
-          <button type="button" className="btn btn--ghost btn--sm" onClick={onNew}>
-            <Icon name="plus" size={16} /> Novo álbum
-          </button>
-        )}
-        {!emptyText && !driveConnected && (
-          <Link to="/painel/configuracoes" className="btn btn--ghost btn--sm">
-            Conectar Drive
-          </Link>
-        )}
-      </div>
-    )
-  }
+  if (albums.length === 0) return <AlbumsEmpty driveConnected={driveConnected} onNew={onNew} emptyText={emptyText} />
   return (
     <ul className="rows">
       {albums.map((a) => {
@@ -198,11 +198,7 @@ export function OrderList({ orders, albums, max, emptyText }) {
   const list = max ? orders.slice(0, max) : orders
   if (list.length === 0) {
     return (
-      <div className="empty empty--compact">
-        <Icon name="receipt" size={30} />
-        <p className="empty__title">{emptyText ?? 'Nenhum pedido ainda'}</p>
-        {!emptyText && <p className="muted">Quando um cliente gerar um Pix, o pedido aparece aqui.</p>}
-      </div>
+      <EmptyState icon="receipt" title={emptyText ?? 'Nenhum pedido ainda'} text={emptyText ? null : 'Quando um cliente gerar um Pix, o pedido aparece aqui.'} className="empty-state--compact" />
     )
   }
   const titles = Object.fromEntries((albums ?? []).map((a) => [a.id, a.title]))
@@ -229,6 +225,134 @@ export function OrderList({ orders, albums, max, emptyText }) {
         )
       })}
     </ul>
+  )
+}
+
+function AlbumsEmpty({ driveConnected, onNew, emptyText }) {
+  if (emptyText) return <EmptyState icon="search" title={emptyText} className="empty-state--compact" />
+  return (
+    <EmptyState
+      icon="albums"
+      title="Nenhum álbum ainda"
+      text={driveConnected ? 'Crie seu primeiro álbum e suba as fotos do último trabalho.' : 'Conecte o Google Drive para criar seu primeiro álbum.'}
+      className="empty-state--compact"
+    >
+      {driveConnected && onNew && (
+        <Button size="sm" icon="plus" onClick={onNew}>
+          Novo álbum
+        </Button>
+      )}
+      {!driveConnected && (
+        <Link to="/painel/configuracoes" className="btn btn--ghost btn--sm">
+          Conectar Drive
+        </Link>
+      )}
+    </EmptyState>
+  )
+}
+
+/** Álbuns como capas (visual de galeria). */
+export function AlbumTiles({ albums, byAlbum, driveConnected, onNew, emptyText, count = 6 }) {
+  if (!albums) {
+    return (
+      <div className="atiles">
+        {Array.from({ length: count }, (_, i) => (
+          <div key={i}>
+            <Skeleton h="auto" style={{ aspectRatio: '4 / 3', borderRadius: 12 }} />
+            <Skeleton h={14} w="70%" style={{ marginTop: 10 }} />
+            <Skeleton h={12} w="40%" style={{ marginTop: 6 }} />
+          </div>
+        ))}
+      </div>
+    )
+  }
+  if (albums.length === 0) return <AlbumsEmpty driveConnected={driveConnected} onNew={onNew} emptyText={emptyText} />
+  return (
+    <motion.ul className="atiles" initial="hidden" animate="show" variants={{ show: { transition: { staggerChildren: 0.05 } } }}>
+      {albums.map((a) => {
+        const s = byAlbum[a.id]
+        const published = a.status === 'published'
+        return (
+          <motion.li key={a.id} variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease } } }}>
+            <Link to={`/painel/album/${a.id}`} className="atile">
+              <span className="atile__cover">
+                {a.coverPath ? <PreviewImage path={a.coverPath} alt="" ratio={4 / 3} /> : <Icon name="image" size={26} />}
+                <span className={`status status--${published ? 'good' : 'muted'} atile__status`}>{published ? 'Publicado' : 'Rascunho'}</span>
+                <span className="atile__count">
+                  <Icon name="image" size={12} stroke={2} /> {a.mediaCount}
+                </span>
+              </span>
+              <span className="atile__title">{a.title}</span>
+              <span className="atile__meta">
+                <span>
+                  {MODE_LABEL[a.mode]} · {brl(a.defaultPrice)}
+                </span>
+                <span className="atile__rev">{brl(s?.revenue ?? 0)}</span>
+              </span>
+            </Link>
+          </motion.li>
+        )
+      })}
+    </motion.ul>
+  )
+}
+
+/** Ranking dos álbuns por receita no período: barras horizontais de uma cor (magnitude). */
+export function TopAlbums({ top, albums, days }) {
+  if (!top || !albums) return <RowsSkeleton thumb />
+  const byId = Object.fromEntries(albums.map((a) => [a.id, a]))
+  const list = top.slice(0, 5)
+  if (list.length === 0) {
+    return <EmptyState icon="chart" title="Sem vendas no período" text={`Os álbuns que mais venderem nos últimos ${days} dias aparecem aqui.`} className="empty-state--compact" />
+  }
+  const max = list[0].revenue || 1
+  return (
+    <ol className="rank">
+      {list.map((t, i) => {
+        const a = byId[t.albumId]
+        return (
+          <li key={t.albumId} className="rank__row" title={`${a?.title ?? 'Álbum'}: ${brl(t.revenue)} em ${t.sales} ${t.sales === 1 ? 'venda' : 'vendas'}`}>
+            <span className="rank__pos">{i + 1}</span>
+            <span className="rank__thumb">{a?.coverPath ? <PreviewImage path={a.coverPath} alt="" /> : <Icon name="image" size={14} />}</span>
+            <span className="rank__main">
+              <span className="rank__top">
+                <span className="rank__title">{a?.title ?? 'Álbum removido'}</span>
+                <span className="rank__value">{brl(t.revenue)}</span>
+              </span>
+              <span className="rank__bar">
+                <motion.span className="rank__fill" initial={{ width: 0 }} animate={{ width: `${Math.max(3, (t.revenue / max) * 100)}%` }} transition={{ duration: 0.8, delay: i * 0.06, ease }} />
+              </span>
+              <span className="rank__meta">
+                {t.sales} {t.sales === 1 ? 'venda' : 'vendas'} · {t.items} {t.items === 1 ? 'arquivo' : 'arquivos'}
+              </span>
+            </span>
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
+
+/** Faixa de aviso: Pix gerados que ainda não foram pagos. */
+export function PendingBanner({ pending }) {
+  if (!pending?.count) return null
+  return (
+    <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease }}>
+      <Link to="/painel/vendas" className="pending">
+        <span className="pending__icon">
+          <Icon name="clock" size={18} />
+        </span>
+        <span className="pending__text">
+          <strong>
+            {pending.count} Pix aguardando pagamento
+          </strong>
+          <span>{brl(pending.total)} em aberto. A entrega é automática quando o cliente pagar.</span>
+        </span>
+        <span className="pending__go">
+          Ver vendas <Icon name="chevron" size={14} />
+        </span>
+      </Link>
+    </motion.div>
   )
 }
 
@@ -320,9 +444,9 @@ export function DriveCard({ profile }) {
           Desconectar
         </button>
       ) : (
-        <button type="button" className="btn btn--accent btn--sm btn--block" onClick={connect} disabled={busy}>
-          {busy && <Spinner size={14} />} Conectar Drive
-        </button>
+        <Button variant="accent" size="sm" block onClick={connect} loading={busy}>
+          Conectar Drive
+        </Button>
       )}
       <ConfirmModal
         open={confirmOpen}
@@ -404,9 +528,9 @@ export function NewAlbumModal({ open, onClose }) {
         </div>
 
         <Alert>{error}</Alert>
-        <button type="submit" className="btn btn--accent btn--block" disabled={busy}>
-          {busy && <Spinner size={18} />} Criar álbum
-        </button>
+        <Button type="submit" variant="accent" block loading={busy}>
+          Criar álbum
+        </Button>
       </form>
     </Modal>
   )

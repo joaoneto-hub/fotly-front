@@ -7,8 +7,9 @@ import { brl } from '../lib/checkout.js'
 import { myOrders, salesByAlbum } from '../lib/stats.js'
 import AppShell from '../app/AppShell.jsx'
 import { useToast } from '../app/toast.jsx'
-import { Alert, FullPageSpinner, MODE_LABEL, MoneyInput, Page, Spinner, copyText, errorMessage } from '../app/ui.jsx'
+import { Alert, Button, EmptyState, MODE_LABEL, MoneyInput, Page, Skeleton, copyText, errorMessage } from '../app/ui.jsx'
 import PreviewImage from '../app/PreviewImage.jsx'
+import Lightbox from '../app/Lightbox.jsx'
 import { Icon, ease } from '../components/shared.jsx'
 
 const ACCEPT = 'image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm'
@@ -29,18 +30,16 @@ export default function AlbumManager() {
       .catch(() => setSales({ revenue: 0, sales: 0 }))
   }, [albumId])
 
-  if (album === undefined) return <FullPageSpinner />
+  if (album === undefined) return <ManagerSkeleton />
   if (!album || album.ownerId !== user.uid) {
     return (
       <AppShell crumbs={[{ label: 'Álbuns', to: '/painel/albuns' }, { label: 'Não encontrado' }]}>
         <Page>
-          <div className="empty">
-            <p className="empty__title">Álbum não encontrado</p>
-            <Alert>{error}</Alert>
+          <EmptyState icon="albums" title="Álbum não encontrado" text={error || 'Ele pode ter sido removido ou o link está errado.'}>
             <Link to="/painel/albuns" className="btn btn--ghost btn--sm">
               Voltar aos álbuns
             </Link>
-          </div>
+          </EmptyState>
         </Page>
       </AppShell>
     )
@@ -67,6 +66,31 @@ export default function AlbumManager() {
           <MediaGrid media={media} />
         </div>
       </Page>
+    </AppShell>
+  )
+}
+
+function ManagerSkeleton() {
+  return (
+    <AppShell crumbs={[{ label: 'Álbuns', to: '/painel/albuns' }, { label: 'Carregando…' }]}>
+      <div className="page" aria-busy="true" aria-label="Carregando álbum">
+        <div className="app-card app-card--pad">
+          <Skeleton h={20} w={160} />
+          <Skeleton h={34} w="min(420px, 80%)" style={{ marginTop: 14 }} />
+          <Skeleton h={38} w="min(320px, 70%)" style={{ marginTop: 14 }} />
+        </div>
+        <div className="stat-strip">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="app-card stat">
+              <Skeleton h={12} w="50%" />
+              <Skeleton h={26} w="70%" style={{ marginTop: 8 }} />
+            </div>
+          ))}
+        </div>
+        <div className="app-card">
+          <Skeleton h={180} />
+        </div>
+      </div>
     </AppShell>
   )
 }
@@ -100,7 +124,12 @@ function AlbumHeader({ album, slug, count }) {
     setBusy(true)
     try {
       await publishAlbum(album.id, !published)
-      if (published) toast.info('Álbum despublicado', { description: 'Ele saiu da sua página pública.' })
+      if (published) {
+        toast.info('Álbum despublicado', {
+          description: 'Ele saiu da sua página pública.',
+          action: { label: 'Desfazer', onClick: () => publishAlbum(album.id, true).catch((e) => toast.error('Não foi possível republicar', { description: errorMessage(e) })) },
+        })
+      }
       else toast.success('Álbum publicado', { description: album.mode === 'private' ? 'Fica oculto até as galerias com senha chegarem.' : 'Copie o link e mande para os clientes.' })
     } catch (e) {
       toast.error('Não foi possível mudar a publicação', { description: errorMessage(e) })
@@ -153,9 +182,9 @@ function AlbumHeader({ album, slug, count }) {
           <label htmlFor="price">Preço por item</label>
           <MoneyInput id="price" value={album.defaultPrice} onChange={savePrice} />
         </div>
-        <button type="button" className={`btn btn--sm ${published ? 'btn--ghost' : 'btn--accent'}`} onClick={togglePublish} disabled={busy}>
-          {busy && <Spinner size={16} />} {published ? 'Despublicar' : 'Publicar álbum'}
-        </button>
+        <Button size="sm" variant={published ? 'ghost' : 'accent'} icon={published ? undefined : 'globe'} onClick={togglePublish} loading={busy}>
+          {published ? 'Despublicar' : 'Publicar álbum'}
+        </Button>
       </div>
       <p className="hint album-hero__note">Novos envios usam o preço atual. Itens já enviados mantêm o preço da hora do envio.</p>
     </div>
@@ -290,6 +319,7 @@ function Uploader({ album }) {
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.25, ease }}
                 >
+                  <QueueThumb file={i.file} />
                   <span className="queue__name">{i.file.name}</span>
                   <span className="queue__status">
                     {i.status === 'waiting' && 'Na fila'}
@@ -315,19 +345,41 @@ function Uploader({ album }) {
   )
 }
 
+function QueueThumb({ file }) {
+  const [url, setUrl] = useState(null)
+  useEffect(() => {
+    if (!file.type.startsWith('image/')) return
+    const u = URL.createObjectURL(file)
+    setUrl(u)
+    return () => URL.revokeObjectURL(u)
+  }, [file])
+  return (
+    <span className="queue__thumb" aria-hidden="true">
+      {url ? <img src={url} alt="" /> : <Icon name={file.type.startsWith('video/') ? 'play' : 'image'} size={14} />}
+    </span>
+  )
+}
+
 function MediaGrid({ media }) {
-  if (media.length === 0) return null
+  const [viewing, setViewing] = useState(null)
+  if (media.length === 0) {
+    return (
+      <section className="app-card">
+        <EmptyState icon="image" title="Nenhuma foto ainda" text="Arraste os arquivos para a área acima. As prévias com marca d'água aparecem aqui." className="empty-state--compact" />
+      </section>
+    )
+  }
   return (
     <section className="app-card">
       <div className="app-card__head">
         <div>
           <h3 className="app-card__title">No álbum</h3>
-          <p className="app-card__sub">Prévias com marca d'água, como o cliente vê</p>
+          <p className="app-card__sub">Prévias com marca d'água, como o cliente vê. Clique para ampliar.</p>
         </div>
       </div>
       <div className="media-grid">
         <AnimatePresence initial={false}>
-          {media.map((m) => (
+          {media.map((m, i) => (
             <motion.figure
               key={m.id}
               className="media-tile"
@@ -336,7 +388,12 @@ function MediaGrid({ media }) {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.35, ease }}
             >
-              <PreviewImage path={m.previewPath} alt={m.name} />
+              <button type="button" className="media-tile__open" onClick={() => setViewing(i)} aria-label={`Ampliar ${m.name}`}>
+                <PreviewImage path={m.previewPath} alt={m.name} />
+                <span className="media-tile__zoom" aria-hidden="true">
+                  <Icon name="expand" size={14} stroke={2} />
+                </span>
+              </button>
               {m.kind === 'video' && (
                 <span className="media-tile__badge">
                   <Icon name="play" size={12} stroke={2.4} /> Vídeo
@@ -350,6 +407,23 @@ function MediaGrid({ media }) {
           ))}
         </AnimatePresence>
       </div>
+      <Lightbox
+        items={media}
+        index={viewing}
+        onIndex={setViewing}
+        caption={(m) => m.name}
+        footer={(m) => (
+          <span className="lightbox__meta">
+            <span>{brl(m.price)}</span>
+            {m.size ? <span>{formatBytes(m.size)}</span> : null}
+            {m.width ? (
+              <span>
+                prévia {m.width}×{m.height}
+              </span>
+            ) : null}
+          </span>
+        )}
+      />
     </section>
   )
 }

@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { albumMedia, getAlbum } from '../lib/albums.js'
 import { photographerBySlug } from '../lib/profiles.js'
 import { brl, startCheckout } from '../lib/checkout.js'
 import { normalizePage } from '../lib/page.js'
 import PublicLayout from '../app/PublicLayout.jsx'
-import PreviewImage from '../app/PreviewImage.jsx'
-import { Avatar } from '../app/public-parts.jsx'
+import Lightbox from '../app/Lightbox.jsx'
+import { AlbumHero, Gallery } from '../app/public-parts.jsx'
 import { useToast } from '../app/toast.jsx'
-import { Alert, FullPageSpinner, Modal, Page, Spinner, errorMessage } from '../app/ui.jsx'
+import { Alert, Button, Modal, Page, Skeleton, errorMessage } from '../app/ui.jsx'
 import { Icon, ease } from '../components/shared.jsx'
 import NotFound from './NotFound.jsx'
 
@@ -18,6 +18,7 @@ export default function PublicAlbum() {
   const [state, setState] = useState({ loading: true })
   const [selected, setSelected] = useState(() => new Set())
   const [checkoutOpen, setCheckoutOpen] = useState(false)
+  const [viewing, setViewing] = useState(null)
 
   useEffect(() => {
     let alive = true
@@ -48,7 +49,7 @@ export default function PublicAlbum() {
     if (state.album) document.title = `${state.album.title} · ${state.photographer.displayName}`
   }, [state.album, state.photographer])
 
-  if (state.loading) return <FullPageSpinner />
+  if (state.loading) return <AlbumSkeleton />
   if (state.notFound) return <NotFound />
 
   const { photographer, album, media } = state
@@ -63,78 +64,70 @@ export default function PublicAlbum() {
   }
 
   const allSelected = media.length > 0 && selected.size === media.length
+  const cover = media.find((m) => m.kind !== 'video') ?? media[0]
 
   return (
     <PublicLayout page={photographer.page}>
-      <Page className="container public-album">
-        <Link to={`/${slug}`} className="back-link">
-          <span aria-hidden="true">←</span>
-          <Avatar photographer={photographer} page={photographer.page} size={28} />
-          {photographer.displayName}
-        </Link>
-        <header className="public-album__head">
-          <div>
-            <h1 className="h2">{album.title}</h1>
-            <p className="muted">
-              {media.length} {media.length === 1 ? 'item' : 'itens'} · {brl(album.defaultPrice)} cada · toque para selecionar
-            </p>
-          </div>
-          {media.length > 1 && (
-            <button
-              type="button"
-              className="btn btn--ghost btn--sm"
-              onClick={() => setSelected(allSelected ? new Set() : new Set(media.map((m) => m.id)))}
-            >
-              {allSelected ? 'Limpar seleção' : 'Selecionar todas'}
-            </button>
-          )}
-        </header>
+      <Page className="public-album">
+        <AlbumHero photographer={photographer} page={photographer.page} album={album} count={media.length} coverPath={cover?.previewPath} backTo={`/${slug}`} />
 
-        {page.albumNote && <p className="album-note">{page.albumNote}</p>}
-
-        <div className="media-grid media-grid--public">
-          {media.map((m, i) => {
-            const isSel = selected.has(m.id)
-            return (
-              <motion.button
-                type="button"
-                key={m.id}
-                className={`media-tile media-tile--pick ${isSel ? 'is-selected' : ''}`}
-                aria-pressed={isSel}
-                aria-label={`${isSel ? 'Remover' : 'Selecionar'} ${m.name}, ${brl(m.price)}`}
-                onClick={() => toggle(m.id)}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: Math.min(i * 0.03, 0.6), ease }}
-                whileTap={{ scale: 0.97 }}
-              >
-                <PreviewImage path={m.previewPath} alt="" />
-                {m.kind === 'video' && (
-                  <span className="media-tile__badge">
-                    <Icon name="play" size={12} stroke={2.4} /> Vídeo
-                  </span>
+        <div className="atoolbar">
+          <div className="container atoolbar__inner">
+            <p className="atoolbar__hint">
+              <span className="atoolbar__hint-dot" aria-hidden="true" />
+              <span>
+                {selected.size > 0 ? (
+                  <strong>
+                    {selected.size} {selected.size === 1 ? 'selecionada' : 'selecionadas'}
+                  </strong>
+                ) : (
+                  'Marque as fotos que quer comprar'
                 )}
-                <AnimatePresence>
-                  {isSel && (
-                    <motion.span
-                      className="photo__check"
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      exit={{ scale: 0 }}
-                      transition={{ type: 'spring', stiffness: 500, damping: 24 }}
-                    >
-                      <Icon name="check" size={14} stroke={3} />
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </motion.button>
-            )
-          })}
+                <span className="atoolbar__hint-text"> · toque na foto para ampliar</span>
+              </span>
+            </p>
+            {media.length > 1 && (
+              <div className="atoolbar__actions">
+                <button type="button" className="btn btn--ghost btn--sm" onClick={() => setSelected(allSelected ? new Set() : new Set(media.map((m) => m.id)))}>
+                  {allSelected ? 'Limpar seleção' : 'Selecionar todas'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="container">
+          {page.albumNote && <p className="album-note">{page.albumNote}</p>}
+          {media.length === 0 ? (
+            <div className="albums__empty" style={{ marginTop: 24 }}>
+              <Icon name="image" size={28} />
+              <p>Este álbum ainda não tem fotos</p>
+            </div>
+          ) : (
+            <Gallery media={media} page={photographer.page} selected={selected} onToggle={toggle} onOpen={setViewing} />
+          )}
         </div>
       </Page>
 
+      <Lightbox
+        items={media}
+        index={viewing}
+        onIndex={setViewing}
+        caption={(m) => m.name}
+        footer={(m) => <span className="lightbox__meta">{brl(m.price)}</span>}
+        actions={(m) => {
+          const on = selected.has(m.id)
+          return (
+            <button type="button" className={`lightbox__pick ${on ? 'is-on' : ''}`} aria-pressed={on} onClick={() => toggle(m.id)}>
+              <span className="lightbox__pick-box">{on && <Icon name="check" size={14} stroke={3} />}</span>
+              <span className="lightbox__pick-label">{on ? 'Selecionada' : 'Selecionar'}</span>
+            </button>
+          )
+        }}
+      />
+
       <AnimatePresence>
-        {selected.size > 0 && (
+        {selected.size > 0 && viewing == null && (
           <motion.div
             className="cart-bar"
             initial={{ y: 100, opacity: 0 }}
@@ -143,11 +136,16 @@ export default function PublicAlbum() {
             transition={{ duration: 0.35, ease }}
           >
             <div className="container cart-bar__inner">
-              <p>
-                <strong>
-                  {selected.size} {selected.size === 1 ? 'item' : 'itens'}
-                </strong>{' '}
-                · {brl(total)}
+              <p className="cart-bar__sum">
+                <span className="cart-bar__icon">
+                  <Icon name="cart" size={18} />
+                </span>
+                <span>
+                  <strong>
+                    {selected.size} {selected.size === 1 ? 'item' : 'itens'}
+                  </strong>
+                  <span className="cart-bar__total">{brl(total)}</span>
+                </span>
               </p>
               <button type="button" className="btn btn--accent" onClick={() => setCheckoutOpen(true)}>
                 {page.buyLabel}
@@ -165,6 +163,22 @@ export default function PublicAlbum() {
         total={total}
       />
     </PublicLayout>
+  )
+}
+
+function AlbumSkeleton() {
+  return (
+    <div className="public" aria-busy="true" aria-label="Carregando álbum">
+      <span className="top-progress" aria-hidden="true" />
+      <Skeleton h={300} style={{ borderRadius: 0 }} />
+      <div className="container">
+        <div className="public-skel__photos">
+          {Array.from({ length: 12 }, (_, i) => (
+            <Skeleton key={i} h="auto" style={{ aspectRatio: '1', borderRadius: 10 }} />
+          ))}
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -221,9 +235,9 @@ function CheckoutModal({ open, onClose, albumId, mediaIds, total }) {
           <p className="hint">Usamos para identificar seu pedido.</p>
         </div>
         <Alert>{error}</Alert>
-        <button type="submit" className="btn btn--accent btn--lg btn--block" disabled={busy}>
-          {busy && <Spinner size={18} />} Gerar Pix
-        </button>
+        <Button type="submit" variant="accent" size="lg" block loading={busy}>
+          {busy ? 'Gerando Pix…' : 'Gerar Pix'}
+        </Button>
         <p className="fine">O valor final é confirmado pelo servidor na hora de gerar o Pix.</p>
       </form>
     </Modal>

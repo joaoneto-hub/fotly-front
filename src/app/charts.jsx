@@ -1,37 +1,44 @@
 import { useMemo, useRef, useState } from 'react'
 import { brl } from '../lib/checkout.js'
 
-// Cor da série: laranja da marca, um passo mais escuro para passar na faixa de luminosidade no fundo escuro
+// Cor da série: laranja da marca, um passo mais escuro para passar na faixa de luminosidade no fundo escuro.
+// O período anterior é referência, não uma segunda categoria: cinza neutro tracejado, mesma escala.
 const SERIES = '#f0602f'
+const PREV = '#77736b'
 
 const W = 720
 const H = 240
 const PAD = { top: 16, right: 16, bottom: 28, left: 56 }
 
-/** Gráfico de área com a receita diária. Passe o mouse para ver o valor do dia. */
-export function RevenueChart({ series }) {
+/** Gráfico de área com a receita diária e o período anterior como referência. */
+export function RevenueChart({ series, prevSeries }) {
   const svg = useRef(null)
   const [hover, setHover] = useState(null)
+  const [showPrev, setShowPrev] = useState(true)
+  const prev = showPrev && prevSeries?.length === series.length ? prevSeries : null
 
-  const { points, ticks, max } = useMemo(() => {
-    const maxVal = Math.max(...series.map((d) => d.revenue), 0)
+  const { points, prevPoints, ticks, max } = useMemo(() => {
+    const maxVal = Math.max(...series.map((d) => d.revenue), ...(prev ?? []).map((d) => d.revenue), 0)
     const top = niceMax(maxVal)
     const innerW = W - PAD.left - PAD.right
     const innerH = H - PAD.top - PAD.bottom
     const step = series.length > 1 ? innerW / (series.length - 1) : 0
-    const pts = series.map((d, i) => ({
-      ...d,
-      x: PAD.left + i * step,
-      y: PAD.top + innerH - (top ? (d.revenue / top) * innerH : 0),
-    }))
-    return { points: pts, ticks: [0, 0.25, 0.5, 0.75, 1].map((f) => f * top), max: top }
-  }, [series])
+    const place = (list) =>
+      list.map((d, i) => ({
+        ...d,
+        x: PAD.left + i * step,
+        y: PAD.top + innerH - (top ? (d.revenue / top) * innerH : 0),
+      }))
+    return { points: place(series), prevPoints: prev ? place(prev) : null, ticks: [0, 0.25, 0.5, 0.75, 1].map((f) => f * top), max: top }
+  }, [series, prev])
 
   const baseY = H - PAD.bottom
-  const line = points.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('')
+  const path = (pts) => pts.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('')
+  const line = path(points)
   const area = points.length ? `${line}L${points.at(-1).x},${baseY}L${points[0].x},${baseY}Z` : ''
   const labelEvery = Math.ceil(series.length / 6)
   const empty = series.every((d) => d.revenue === 0)
+  const total = (list) => list.reduce((s, d) => s + d.revenue, 0)
 
   function onMove(e) {
     const rect = svg.current.getBoundingClientRect()
@@ -44,9 +51,21 @@ export function RevenueChart({ series }) {
   }
 
   const h = hover != null ? points[hover] : null
+  const hp = hover != null && prevPoints ? prevPoints[hover] : null
 
   return (
     <div className="chart">
+      {prevSeries && (
+        <div className="chart__legend">
+          <span className="chart__key">
+            <span className="chart__swatch" style={{ background: SERIES }} /> Este período
+          </span>
+          <button type="button" className={`chart__key chart__key--btn ${showPrev ? '' : 'is-off'}`} onClick={() => setShowPrev((v) => !v)} aria-pressed={showPrev}>
+            <span className="chart__swatch chart__swatch--dash" /> Período anterior
+            <span className="chart__key-val">{brl(total(prevSeries))}</span>
+          </button>
+        </div>
+      )}
       <svg
         ref={svg}
         viewBox={`0 0 ${W} ${H}`}
@@ -83,12 +102,14 @@ export function RevenueChart({ series }) {
           ) : null
         )}
 
-        {!empty && <path d={area} fill="url(#rev-fill)" />}
-        <path d={line} fill="none" stroke={SERIES} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" opacity={empty ? 0.35 : 1} />
+        {prevPoints && <path d={path(prevPoints)} fill="none" stroke={PREV} strokeWidth="1.5" strokeDasharray="4 4" strokeLinejoin="round" strokeLinecap="round" />}
+        {!empty && <path d={area} fill="url(#rev-fill)" className="chart__area" />}
+        <path d={line} fill="none" stroke={SERIES} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" opacity={empty ? 0.35 : 1} className="chart__line" pathLength="1" />
 
         {h && (
           <g pointerEvents="none">
             <line x1={h.x} x2={h.x} y1={PAD.top} y2={baseY} className="chart__cross" />
+            {hp && <circle cx={hp.x} cy={hp.y} r="4" fill={PREV} stroke="var(--app-card)" strokeWidth="2" />}
             <circle cx={h.x} cy={h.y} r="5" fill={SERIES} stroke="var(--app-card)" strokeWidth="2" />
           </g>
         )}
@@ -97,12 +118,17 @@ export function RevenueChart({ series }) {
       </svg>
 
       {h && (
-        <div className="chart__tip" style={{ left: `${(h.x / W) * 100}%`, top: `${(h.y / H) * 100}%` }}>
+        <div className={`chart__tip ${h.x > W * 0.75 ? 'chart__tip--left' : ''}`} style={{ left: `${(h.x / W) * 100}%`, top: `${(Math.min(h.y, hp?.y ?? h.y) / H) * 100}%` }}>
           <span className="chart__tip-date">{longDate(h.date)}</span>
           <strong>{brl(h.revenue)}</strong>
           <span className="chart__tip-sub">
             {h.sales} {h.sales === 1 ? 'venda' : 'vendas'}
           </span>
+          {hp && (
+            <span className="chart__tip-prev">
+              <span className="chart__swatch chart__swatch--dash" /> {shortDate(hp.date)}: {brl(hp.revenue)}
+            </span>
+          )}
         </div>
       )}
 
@@ -115,14 +141,16 @@ export function RevenueChart({ series }) {
             <th>Dia</th>
             <th>Receita</th>
             <th>Vendas</th>
+            {prevSeries && <th>Receita no período anterior</th>}
           </tr>
         </thead>
         <tbody>
-          {series.map((d) => (
+          {series.map((d, i) => (
             <tr key={d.date}>
               <td>{longDate(d.date)}</td>
               <td>{brl(d.revenue)}</td>
               <td>{d.sales}</td>
+              {prevSeries && <td>{brl(prevSeries[i]?.revenue ?? 0)}</td>}
             </tr>
           ))}
         </tbody>

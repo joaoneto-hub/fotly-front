@@ -1,0 +1,280 @@
+/* =====================================================================
+   Fotly · Design system
+   Tokens únicos para landing, painel e páginas públicas.
+   As cores da marca (laranja #ff6a3d + neutros quentes) vêm de index.css;
+   aqui ficam superfícies do painel, estados, espaçamento, raios, sombras,
+   camadas e movimento. Componentes usam SÓ estes tokens.
+   ===================================================================== */
+:root {
+  /* Superfícies do painel (do mais fundo ao mais alto) */
+  --app-bg: #0e0e0d;
+  --app-sidebar: #121211;
+  --app-card: #161513;
+  --app-card-2: #1d1c19;
+  --app-card-3: #24231f;
+  --app-line: #262522;
+  --app-line-2: #33322d;
+  --app-hover: rgba(242, 240, 234, 0.045);
+  --app-press: rgba(242, 240, 234, 0.08);
+
+  /* Acento derivado */
+  --accent-soft: rgba(255, 106, 61, 0.12);
+  --accent-softer: rgba(255, 106, 61, 0.06);
+  --accent-ring: rgba(255, 106, 61, 0.22);
+  --on-accent: #111110;
+
+  /* Estados (sempre acompanhados de ícone ou texto) */
+  --good: #4ade80;
+  --good-bg: rgba(74, 222, 128, 0.12);
+  --warn: #fbbf24;
+  --warn-bg: rgba(251, 191, 36, 0.12);
+  --bad: #f87171;
+  --bad-bg: rgba(248, 113, 113, 0.12);
+  --info: var(--accent);
+  --info-bg: var(--accent-soft);
+
+  /* Espaçamento (base 4) */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-10: 40px;
+  --s-12: 48px;
+
+  /* Raios */
+  --r-xs: 6px;
+  --r-sm: 8px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 18px;
+  --r-full: 999px;
+  --r: var(--r-lg);
+
+  /* Tipografia do painel */
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 14px;
+  --fs-base: 15px;
+  --fs-lg: 17px;
+  --fs-xl: 22px;
+  --fs-2xl: 28px;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* Sombras */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 12px 30px -12px rgba(0, 0, 0, 0.7);
+  --shadow-lg: 0 30px 70px -28px rgba(0, 0, 0, 0.85);
+  --shadow-inset: 0 1px 0 rgba(255, 255, 255, 0.025) inset;
+  --focus-ring: 0 0 0 3px var(--accent-ring);
+
+  /* Camadas */
+  --z-sticky: 30;
+  --z-sidebar: 40;
+  --z-cart: 60;
+  --z-drawer: 100;
+  --z-modal: 200;
+  --z-lightbox: 250;
+  --z-toast: 300;
+
+  /* Movimento */
+  --dur-fast: 0.15s;
+  --dur: 0.25s;
+  --dur-slow: 0.45s;
+}
+
+/* ===== Loader da marca: a lente do logo "foca" ===== */
+.loader {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-3);
+  color: var(--text-muted);
+}
+.loader svg {
+  display: block;
+  overflow: visible;
+}
+.loader__body {
+  fill: var(--accent);
+  transform-origin: 16px 16px;
+  animation: loader-breathe 1.6s var(--ease) infinite;
+}
+.loader__lens {
+  fill: none;
+  stroke: var(--on-accent, var(--ink));
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: 26 15;
+  transform-origin: 16px 16px;
+  animation: loader-focus 1.1s linear infinite;
+}
+.loader__flash {
+  fill: var(--on-accent, var(--ink));
+  animation: loader-flash 1.6s ease-in-out infinite;
+}
+.loader__text {
+  margin: 0;
+  font-size: var(--fs-md);
+}
+@keyframes loader-focus {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes loader-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.92);
+  }
+}
+@keyframes loader-flash {
+  0%,
+  70%,
+  100% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 0.15;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loader__body,
+  .loader__lens,
+  .loader__flash {
+    animation-duration: 3s;
+  }
+}
+
+/* ===== Skeleton (funciona em qualquer tema) ===== */
+.skeleton {
+  display: block;
+  border-radius: var(--r-sm);
+  background: linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in srgb, var(--text) 6%, transparent) 50%,
+      transparent 100%
+    ),
+    color-mix(in srgb, var(--text) 6%, transparent);
+  background-size: 200% 100%, auto;
+  animation: shimmer 1.4s linear infinite;
+}
+.skeleton--round {
+  border-radius: 50%;
+}
+@keyframes shimmer {
+  from {
+    background-position: 200% 0, 0 0;
+  }
+  to {
+    background-position: -200% 0, 0 0;
+  }
+}
+
+/* ===== Botão com carregamento ===== */
+.btn[aria-busy='true'] {
+  cursor: progress;
+}
+.btn__spin {
+  display: inline-flex;
+}
+
+/* ===== Badges ===== */
+.badge-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 9px;
+  border-radius: var(--r-full);
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ===== Barra de carregamento no topo (rotas e ações longas) ===== */
+.top-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: var(--z-toast);
+  overflow: hidden;
+  pointer-events: none;
+}
+.top-progress::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: top-progress 1.1s var(--ease) infinite;
+}
+@keyframes top-progress {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(260%);
+  }
+}
+
+/* ===== Estado vazio ===== */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--s-1);
+  padding: var(--s-10) var(--s-6);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-lg);
+  color: var(--text-muted);
+}
+.empty-state__icon {
+  width: 52px;
+  height: 52px;
+  margin-bottom: var(--s-2);
+  border-radius: var(--r-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+  color: var(--text-soft);
+}
+.empty-state__title {
+  margin: 0;
+  font-weight: 600;
+  font-size: var(--fs-lg);
+  color: var(--text);
+}
+.empty-state__text {
+  margin: 0;
+  max-width: 44ch;
+  font-size: var(--fs-md);
+}
+.empty-state__actions {
+  margin-top: var(--s-4);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--s-2);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

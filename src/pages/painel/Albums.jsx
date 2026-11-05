@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { salesByAlbum } from '../../lib/stats.js'
 import AppShell from '../../app/AppShell.jsx'
-import { AlbumList, NewAlbumButton, NewAlbumModal, PageHead, Segmented } from '../../app/dashboard-parts.jsx'
+import { AlbumList, AlbumTiles, NewAlbumButton, NewAlbumModal, PageHead, Segmented } from '../../app/dashboard-parts.jsx'
 import { useAlbums, useOrders } from '../../app/useOwnerData.js'
 import { Page } from '../../app/ui.jsx'
 import { Icon } from '../../components/shared.jsx'
@@ -20,6 +20,21 @@ export default function Albums() {
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [newOpen, setNewOpen] = useState(false)
+  const [view, setView] = useState(() => {
+    try {
+      return localStorage.getItem('fotly:albums-view') ?? 'tiles'
+    } catch {
+      return 'tiles'
+    }
+  })
+  const changeView = (v) => {
+    setView(v)
+    try {
+      localStorage.setItem('fotly:albums-view', v)
+    } catch {
+      /* armazenamento indisponível: só não lembra a escolha */
+    }
+  }
 
   const byAlbum = useMemo(() => (orders ? salesByAlbum(orders) : {}), [orders])
   const visible = useMemo(() => {
@@ -46,15 +61,40 @@ export default function Albums() {
               <span className="sr-only">Buscar álbum</span>
               <input className="input" placeholder="Buscar pelo nome" value={search} onChange={(e) => setSearch(e.target.value)} />
             </label>
-            <Segmented id="album-filter" value={filter} onChange={setFilter} options={FILTERS} label="Filtrar álbuns" />
+            <div className="toolbar__end">
+              <Segmented id="album-filter" value={filter} onChange={setFilter} options={FILTERS} label="Filtrar álbuns" />
+              <span className="view-toggle">
+                <Segmented
+                  id="album-view"
+                  value={view}
+                  onChange={changeView}
+                  label="Modo de exibição"
+                  options={[
+                    { value: 'tiles', label: <Icon name="grid" size={15} />, aria: 'Capas' },
+                    { value: 'list', label: <Icon name="list" size={15} />, aria: 'Lista' },
+                  ]}
+                />
+              </span>
+            </div>
           </div>
-          <AlbumList
-            albums={visible}
-            byAlbum={byAlbum}
-            driveConnected={profile.driveConnected}
-            onNew={() => setNewOpen(true)}
-            emptyText={filtering ? 'Nenhum álbum com esse filtro' : undefined}
-          />
+          {view === 'tiles' ? (
+            <AlbumTiles
+              albums={visible}
+              byAlbum={byAlbum}
+              driveConnected={profile.driveConnected}
+              onNew={() => setNewOpen(true)}
+              emptyText={filtering ? 'Nenhum álbum com esse filtro' : undefined}
+              count={8}
+            />
+          ) : (
+            <AlbumList
+              albums={visible}
+              byAlbum={byAlbum}
+              driveConnected={profile.driveConnected}
+              onNew={() => setNewOpen(true)}
+              emptyText={filtering ? 'Nenhum álbum com esse filtro' : undefined}
+            />
+          )}
         </section>
 
         <NewAlbumModal open={newOpen} onClose={() => setNewOpen(false)} />

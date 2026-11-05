@@ -74,7 +74,31 @@ export function computeKpis(orders, days, now = Date.now()) {
       conversion: a.conversion != null && b.conversion != null ? a.conversion - b.conversion : null,
     },
     series: dailySeries(orders, start, days),
+    prevSeries: dailySeries(orders, prevStart, days),
+    pending: pendingSum(orders),
   }
+}
+
+/** Pix gerados e ainda não pagos (todos, não só do período). */
+function pendingSum(orders) {
+  const list = orders.filter((o) => o.status === 'pending')
+  return { count: list.length, total: list.reduce((s, o) => s + (o.total ?? 0), 0) }
+}
+
+/** Álbuns que mais faturaram no período (receita paga), do maior para o menor. */
+export function topAlbums(orders, days, now = Date.now()) {
+  const start = startOfDay(now) - (days - 1) * DAY
+  const map = {}
+  for (const o of orders) {
+    if (o.status !== 'paid') continue
+    const t = paidAtOf(o)
+    if (t == null || t < start) continue
+    const m = (map[o.albumId] ??= { albumId: o.albumId, revenue: 0, sales: 0, items: 0 })
+    m.revenue += o.total ?? 0
+    m.sales += 1
+    m.items += o.items?.length ?? 0
+  }
+  return Object.values(map).sort((a, b) => b.revenue - a.revenue)
 }
 
 /** Receita e vendas pagas por dia, do dia `start` em diante. */

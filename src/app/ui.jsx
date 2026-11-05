@@ -7,10 +7,61 @@ export function Spinner({ size = 22, label = 'Carregando' }) {
   return <span className="spinner" style={{ width: size, height: size }} role="status" aria-label={label} />
 }
 
-export function FullPageSpinner() {
+/** Loader da marca: a lente do logo gira como se estivesse focando. */
+export function Loader({ size = 44, text, label = 'Carregando' }) {
+  return (
+    <div className="loader" role="status" aria-label={text ?? label}>
+      <svg viewBox="0 0 32 32" width={size} height={size} aria-hidden="true">
+        <rect x="2" y="2" width="28" height="28" rx="8" className="loader__body" />
+        <circle cx="16" cy="16" r="6.5" className="loader__lens" />
+        <circle cx="23.5" cy="8.5" r="1.8" className="loader__flash" />
+      </svg>
+      {text && <p className="loader__text">{text}</p>}
+    </div>
+  )
+}
+
+/** Tela inteira carregando (rotas, autenticação). */
+export function FullPageSpinner({ text }) {
   return (
     <div className="full-center">
-      <Spinner size={32} />
+      <span className="top-progress" aria-hidden="true" />
+      <Loader text={text} />
+    </div>
+  )
+}
+
+/** Bloco cinza animado no lugar do conteúdo que ainda vai chegar. */
+export function Skeleton({ h = 16, w = '100%', round = false, style, className = '' }) {
+  return <span className={`skeleton ${round ? 'skeleton--round' : ''} ${className}`} style={{ height: h, width: w, ...style }} aria-hidden="true" />
+}
+
+/**
+ * Botão do design system.
+ *   <Button variant="accent" size="sm" icon="plus" loading={busy}>Salvar</Button>
+ * variant: accent | ghost | light | danger · size: sm | md | lg
+ */
+export function Button({ variant = 'ghost', size = 'md', icon, loading = false, block = false, className = '', children, disabled, ...rest }) {
+  const cls = ['btn', `btn--${variant}`, size !== 'md' && `btn--${size}`, block && 'btn--block', className].filter(Boolean).join(' ')
+  const iconSize = size === 'lg' ? 18 : size === 'sm' ? 15 : 16
+  return (
+    <button type="button" className={cls} disabled={disabled || loading} aria-busy={loading || undefined} {...rest}>
+      {loading ? <Spinner size={iconSize - 2} /> : icon ? <Icon name={icon} size={iconSize} stroke={2} /> : null}
+      {children}
+    </button>
+  )
+}
+
+/** Estado vazio com ícone, texto e ações. */
+export function EmptyState({ icon = 'image', title, text, children, className = '' }) {
+  return (
+    <div className={`empty-state ${className}`}>
+      <span className="empty-state__icon">
+        <Icon name={icon} size={24} />
+      </span>
+      <p className="empty-state__title">{title}</p>
+      {text && <p className="empty-state__text">{text}</p>}
+      {children && <div className="empty-state__actions">{children}</div>}
     </div>
   )
 }
@@ -113,9 +164,9 @@ export function ConfirmModal({ open, onClose, onConfirm, title, children, confir
           <button type="button" className="btn btn--ghost btn--sm" onClick={onClose} disabled={busy}>
             Cancelar
           </button>
-          <button type="button" className={`btn btn--sm ${danger ? 'btn--danger' : 'btn--accent'}`} onClick={confirm} disabled={busy}>
-            {busy && <Spinner size={14} />} {confirmLabel}
-          </button>
+          <Button size="sm" variant={danger ? 'danger' : 'accent'} onClick={confirm} loading={busy}>
+            {confirmLabel}
+          </Button>
         </div>
       </div>
     </Modal>

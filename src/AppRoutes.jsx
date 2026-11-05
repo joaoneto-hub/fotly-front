@@ -19,7 +19,7 @@ import NotFound from './pages/NotFound.jsx'
 function Painel({ children }) {
   const { user, profile, loading } = useAuth()
   const location = useLocation()
-  if (loading) return <FullPageSpinner />
+  if (loading) return <FullPageSpinner text="Abrindo seu painel…" />
   if (!user) return <Navigate to="/entrar" replace state={{ from: location.pathname }} />
   if (!profile) return <Onboarding />
   return children

@@ -4,7 +4,7 @@ import { createProfile, toSlug } from '../../lib/auth.js'
 import { RESERVED_SLUGS } from '../../lib/profiles.js'
 import AppShell from '../../app/AppShell.jsx'
 import { useToast } from '../../app/toast.jsx'
-import { Alert, Page, Spinner, errorMessage } from '../../app/ui.jsx'
+import { Alert, Button, Page, errorMessage } from '../../app/ui.jsx'
 
 /** Primeiro acesso: criar o perfil e reservar o endereço. */
 export default function Onboarding() {
@@ -68,9 +68,9 @@ export default function Onboarding() {
               <p className="hint">Letras minúsculas, números e hífen.</p>
             </div>
             <Alert>{error}</Alert>
-            <button type="submit" className="btn btn--accent btn--block" disabled={busy}>
-              {busy && <Spinner size={18} />} Criar minha página
-            </button>
+            <Button type="submit" variant="accent" block loading={busy}>
+              Criar minha página
+            </Button>
           </form>
         </div>
       </Page>

@@ -202,6 +202,72 @@ const paths = {
       <circle cx="12" cy="13" r="3.5" />
     </>
   ),
+  instagram: (
+    <>
+      <rect x="4" y="4" width="16" height="16" rx="5" />
+      <circle cx="12" cy="12" r="3.6" />
+      <path d="M16.8 7.2h.01" />
+    </>
+  ),
+  mail: (
+    <>
+      <rect x="3.5" y="5.5" width="17" height="13" rx="2" />
+      <path d="M4 7l8 6 8-6" />
+    </>
+  ),
+  pin: (
+    <>
+      <path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" />
+      <circle cx="12" cy="10" r="2.3" />
+    </>
+  ),
+  left: <path d="M15 6l-6 6 6 6" />,
+  right: <path d="M9 6l6 6-6 6" />,
+  expand: <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />,
+  eye: (
+    <>
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+      <circle cx="12" cy="12" r="3" />
+    </>
+  ),
+  list: <path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01" />,
+  mosaic: (
+    <>
+      <rect x="3.5" y="3.5" width="9" height="10" rx="1.5" />
+      <rect x="15" y="3.5" width="5.5" height="6" rx="1.5" />
+      <rect x="15" y="12" width="5.5" height="8.5" rx="1.5" />
+      <rect x="3.5" y="16" width="9" height="4.5" rx="1.5" />
+    </>
+  ),
+  monitor: (
+    <>
+      <rect x="3" y="4" width="18" height="12" rx="2" />
+      <path d="M8 20h8M12 16v4" />
+    </>
+  ),
+  phone: (
+    <>
+      <rect x="7" y="3" width="10" height="18" rx="2.5" />
+      <path d="M11 17.5h2" />
+    </>
+  ),
+  sparkle: <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z" />,
+  cart: (
+    <>
+      <path d="M3 4h2.5l2.2 11h10.6L20.5 8H7" />
+      <circle cx="9.5" cy="19" r="1.4" />
+      <circle cx="16.5" cy="19" r="1.4" />
+    </>
+  ),
+  type: <path d="M5 7V5h14v2M12 5v14M9 19h6" />,
+  layout: (
+    <>
+      <rect x="3.5" y="3.5" width="17" height="17" rx="2" />
+      <path d="M3.5 9.5h17M9.5 9.5v11" />
+    </>
+  ),
+  text: <path d="M4 6h16M4 11h16M4 16h10" />,
+  bolt: <path d="M13 3L5 13h6l-1 8 8-10h-6z" />,
 }
 
 export function Icon({ name, size = 22, stroke = 1.8, className }) {

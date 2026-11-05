@@ -58,7 +58,7 @@ export default function Order() {
     return () => clearTimeout(t)
   }, [order, error])
 
-  if (!order && !error) return <FullPageSpinner />
+  if (!order && !error) return <FullPageSpinner text="Carregando seu pedido…" />
 
   return (
     <PublicLayout>
