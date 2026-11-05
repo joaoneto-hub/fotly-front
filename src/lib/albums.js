@@ -62,11 +62,13 @@ export async function publicAlbums(ownerId) {
     where('ownerId', '==', ownerId),
     where('status', '==', 'published'),
     // As regras do Firestore só liberam álbuns não privados; a consulta precisa dizer isso
-    where('mode', 'in', ['public', 'store']),
-    orderBy('createdAt', 'desc')
+    where('mode', 'in', ['public', 'store'])
   )
+  // Sem orderBy de propósito: com o filtro `mode in [...]` ele exigiria um índice composto.
+  // A lista de um fotógrafo é pequena, então ordenamos aqui (mais recentes primeiro).
   const snap = await getDocs(q)
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+  const time = (t) => (t?.toMillis ? t.toMillis() : 0)
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => time(b.createdAt) - time(a.createdAt))
 }
 
 /** Escuta um álbum em tempo real. Retorna a função para parar. */

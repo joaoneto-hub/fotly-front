@@ -52,6 +52,24 @@ export function Button({ variant = 'ghost', size = 'md', icon, loading = false, 
   )
 }
 
+/** Falha ao carregar uma página pública: explica e deixa tentar de novo (não é 404). */
+export function LoadError({ error, onRetry }) {
+  return (
+    <div className="full-center">
+      <Page className="panel panel--narrow not-found">
+        <EmptyState icon="alert" title="Não foi possível carregar esta página" text={errorMessage(error)}>
+          <Button variant="accent" size="sm" onClick={onRetry}>
+            Tentar de novo
+          </Button>
+          <Link to="/" className="btn btn--ghost btn--sm">
+            Ir para o início
+          </Link>
+        </EmptyState>
+      </Page>
+    </div>
+  )
+}
+
 /** Estado vazio com ícone, texto e ações. */
 export function EmptyState({ icon = 'image', title, text, children, className = '' }) {
   return (

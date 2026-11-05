@@ -5,12 +5,13 @@ import { publicAlbums } from '../lib/albums.js'
 import { albumSummaries } from '../lib/stats.js'
 import PublicLayout from '../app/PublicLayout.jsx'
 import { AlbumsSection, ProfileHero } from '../app/public-parts.jsx'
-import { Page, Skeleton } from '../app/ui.jsx'
+import { LoadError, Page, Skeleton } from '../app/ui.jsx'
 import NotFound from './NotFound.jsx'
 
 export default function PublicProfile() {
   const { slug } = useParams()
   const [state, setState] = useState({ loading: true })
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     let alive = true
@@ -22,14 +23,15 @@ export default function PublicProfile() {
         const albums = await publicAlbums(photographer.id).then(albumSummaries)
         if (alive) setState({ loading: false, photographer, albums })
       } catch (e) {
-        console.error(e)
-        if (alive) setState({ loading: false, notFound: true })
+        // Erro de verdade (rede, permissão, índice) não é "página não existe"
+        console.error('Falha ao carregar a página do fotógrafo', e)
+        if (alive) setState({ loading: false, error: e })
       }
     })()
     return () => {
       alive = false
     }
-  }, [slug])
+  }, [slug, attempt])
 
   useEffect(() => {
     if (state.photographer) document.title = `${state.photographer.displayName} · Fotografia`
@@ -37,6 +39,7 @@ export default function PublicProfile() {
 
   if (state.loading) return <ProfileSkeleton />
   if (state.notFound) return <NotFound />
+  if (state.error) return <LoadError error={state.error} onRetry={() => setAttempt((n) => n + 1)} />
 
   const { photographer, albums } = state
 

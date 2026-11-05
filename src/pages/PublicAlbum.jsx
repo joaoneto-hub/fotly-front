@@ -9,7 +9,7 @@ import PublicLayout from '../app/PublicLayout.jsx'
 import Lightbox from '../app/Lightbox.jsx'
 import { AlbumHero, Gallery } from '../app/public-parts.jsx'
 import { useToast } from '../app/toast.jsx'
-import { Alert, Button, Modal, Page, Skeleton, errorMessage } from '../app/ui.jsx'
+import { Alert, Button, LoadError, Modal, Page, Skeleton, errorMessage } from '../app/ui.jsx'
 import { Icon, ease } from '../components/shared.jsx'
 import NotFound from './NotFound.jsx'
 
@@ -19,6 +19,7 @@ export default function PublicAlbum() {
   const [selected, setSelected] = useState(() => new Set())
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [viewing, setViewing] = useState(null)
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     let alive = true
@@ -31,14 +32,19 @@ export default function PublicAlbum() {
         const media = await albumMedia(albumId)
         if (alive) setState({ loading: false, photographer, album, media })
       } catch (e) {
-        console.error(e)
-        if (alive) setState({ loading: false, notFound: true })
+        // Álbum privado ou removido: as regras negam a leitura, e para o visitante isso é 404
+        if (e?.code === 'permission-denied') {
+          if (alive) setState({ loading: false, notFound: true })
+          return
+        }
+        console.error('Falha ao carregar o álbum', e)
+        if (alive) setState({ loading: false, error: e })
       }
     })()
     return () => {
       alive = false
     }
-  }, [slug, albumId])
+  }, [slug, albumId, attempt])
 
   const total = useMemo(
     () => (state.media ?? []).filter((m) => selected.has(m.id)).reduce((sum, m) => sum + m.price, 0),
@@ -51,6 +57,7 @@ export default function PublicAlbum() {
 
   if (state.loading) return <AlbumSkeleton />
   if (state.notFound) return <NotFound />
+  if (state.error) return <LoadError error={state.error} onRetry={() => setAttempt((n) => n + 1)} />
 
   const { photographer, album, media } = state
   const page = normalizePage(photographer.page)
